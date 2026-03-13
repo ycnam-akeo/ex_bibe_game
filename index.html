@@ -43,20 +43,22 @@
       background: linear-gradient(180deg, #6ebdff 0%, #9fd9ff 55%, #d8f1ff 100%);
     }
 
-    .sky-segment {
+    .sky-flow {
       position: absolute;
       top: 0;
       width: 100%;
       height: 100%;
       background-image:
-        repeating-linear-gradient(
-          -8deg,
-          rgba(255, 255, 255, 0.14) 0 180px,
-          rgba(255, 255, 255, 0.04) 180px 360px
+        linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.12) 0%,
+          rgba(255, 255, 255, 0.05) 32%,
+          rgba(255, 255, 255, 0.03) 68%,
+          rgba(255, 255, 255, 0.12) 100%
         );
-      background-size: 640px 100%;
+      background-size: 760px 100%;
       background-repeat: repeat-x;
-      will-change: transform;
+      will-change: background-position;
     }
 
     .cloud-layer {
@@ -491,8 +493,7 @@
 <body>
   <main class="game-screen" aria-label="game-screen">
     <div class="sky-base"></div>
-    <div class="sky-segment" id="skyA"></div>
-    <div class="sky-segment" id="skyB"></div>
+    <div class="sky-flow" id="skyFlow"></div>
     <div class="cloud-layer" id="cloudLayer"></div>
     <div class="obstacle-layer" id="obstacleLayer"></div>
     <div class="ground-strip" aria-hidden="true"></div>
@@ -538,8 +539,7 @@
 
   <script>
     const gameScreen = document.querySelector(".game-screen");
-    const skyA = document.getElementById("skyA");
-    const skyB = document.getElementById("skyB");
+    const skyFlow = document.getElementById("skyFlow");
     const cloudLayer = document.getElementById("cloudLayer");
     const obstacleLayer = document.getElementById("obstacleLayer");
     const bird = document.getElementById("bird");
@@ -560,6 +560,7 @@
     const BASE_SCENE_WIDTH = 1260;
     const BASE_SCENE_HEIGHT = 540;
     const SKY_SPEED = 65;
+    const SKY_TILE = 760;
     const CLOUD_COUNT = 9;
     const OBSTACLE_SPEED = 225;
     const OBSTACLE_WIDTH = 86;
@@ -577,8 +578,7 @@
 
     let sceneWidth = 0;
     let sceneHeight = 0;
-    let skyX1 = 0;
-    let skyX2 = 0;
+    let skyOffset = 0;
     let last = performance.now();
     let birdY = 0;
     let birdVY = 0;
@@ -623,10 +623,8 @@
     function layoutScene() {
       sceneWidth = gameScreen.clientWidth;
       sceneHeight = gameScreen.clientHeight;
-      skyX1 = 0;
-      skyX2 = sceneWidth;
-      skyA.style.transform = `translateX(${skyX1}px)`;
-      skyB.style.transform = `translateX(${skyX2}px)`;
+      skyOffset = 0;
+      skyFlow.style.backgroundPositionX = "0px";
       if (birdY === 0) birdY = sceneHeight * 0.4;
       birdY = Math.min(Math.max(birdY, 10), getBottomLimit());
       placeBird();
@@ -938,13 +936,8 @@
       last = now;
       const timeSec = now / 1000;
 
-      skyX1 -= SKY_SPEED * dt;
-      skyX2 -= SKY_SPEED * dt;
-      if (skyX1 <= -sceneWidth) skyX1 = skyX2 + sceneWidth;
-      if (skyX2 <= -sceneWidth) skyX2 = skyX1 + sceneWidth;
-
-      skyA.style.transform = `translateX(${skyX1}px)`;
-      skyB.style.transform = `translateX(${skyX2}px)`;
+      skyOffset = (skyOffset + SKY_SPEED * dt) % SKY_TILE;
+      skyFlow.style.backgroundPositionX = `${-skyOffset}px`;
 
       for (const cloud of clouds) {
         cloud.x -= cloud.speed * dt;
