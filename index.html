@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sky Scroll Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1vh;
+      overflow: hidden;
+      background: #c9e9ff;
+    }
+
+    .game-screen {
+      position: relative;
+      width: 1260px;
+      height: 540px;
+      --ground-h: 14px;
+      overflow: hidden;
+      border-radius: 14px;
+      isolation: isolate;
+      transform-origin: center center;
+      will-change: transform;
+    }
+
+    .sky-base {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, #6ebdff 0%, #9fd9ff 55%, #d8f1ff 100%);
+    }
+
+    .sky-segment {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-image:
+        repeating-linear-gradient(
+          -8deg,
+          rgba(255, 255, 255, 0.14) 0 180px,
+          rgba(255, 255, 255, 0.04) 180px 360px
+        );
+      background-size: 640px 100%;
+      background-repeat: repeat-x;
+      will-change: transform;
+    }
+
+    .cloud-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .cloud {
+      position: absolute;
+      width: 150px;
+      height: 48px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.88);
+      will-change: transform;
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      background: inherit;
+    }
+
+    .cloud::before {
+      width: 58px;
+      height: 58px;
+      left: 28px;
+      top: -28px;
+    }
+
+    .cloud::after {
+      width: 66px;
+      height: 66px;
+      right: 20px;
+      top: -34px;
+    }
+
+    .obstacle-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .ground-strip {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: var(--ground-h);
+      z-index: 3;
+      pointer-events: none;
+      background: linear-gradient(180deg, #78c565 0%, #4d9d45 100%);
+      border-top: 2px solid #99dd7a;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    }
+
+    .obstacle-pair {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      will-change: transform;
+    }
+
+    .pipe {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      background: linear-gradient(90deg, #2f8f39 0%, #45b450 50%, #2f8f39 100%);
+      border: 3px solid #1f6628;
+      box-shadow: inset 4px 0 0 rgba(255, 255, 255, 0.16);
+    }
+
+    .pipe-top {
+      top: 0;
+      border-bottom: none;
+      border-radius: 10px 10px 4px 4px;
+    }
+
+    .pipe-bottom {
+      bottom: 0;
+      border-top: none;
+      border-radius: 4px 4px 10px 10px;
+    }
+
+    .pipe-top::after,
+    .pipe-bottom::after {
+      content: "";
+      position: absolute;
+      left: -8px;
+      width: calc(100% + 16px);
+      height: 14px;
+      background: #62cc6d;
+      border: 3px solid #1f6628;
+      border-radius: 8px;
+    }
+
+    .pipe-top::after {
+      bottom: -3px;
+    }
+
+    .pipe-bottom::after {
+      top: -3px;
+    }
+
+    .bird {
+      position: absolute;
+      left: 9%;
+      top: 0;
+      width: 84px;
+      height: 62px;
+      z-index: 4;
+      will-change: transform;
+      pointer-events: none;
+    }
+
+    .bird-body {
+      position: absolute;
+      left: 10px;
+      top: 8px;
+      width: 56px;
+      height: 42px;
+      border-radius: 50% 48% 52% 50%;
+      background: #ffe27a;
+      border: 2px solid rgba(0, 0, 0, 0.08);
+      box-shadow: inset -4px -4px 0 rgba(255, 191, 76, 0.5);
+      overflow: visible;
+    }
+
+    .bird-wing {
+      position: absolute;
+      left: 2px;
+      top: 17px;
+      width: 22px;
+      height: 14px;
+      border-radius: 72% 55% 70% 58%;
+      background: linear-gradient(180deg, #ffc857 0%, #ffb845 100%);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      box-shadow: inset -2px -1px 0 rgba(230, 152, 46, 0.22);
+      transform-origin: 20px 7px;
+      animation: flap 0.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    }
+
+    .bird-wing::before {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 2px;
+      width: 12px;
+      height: 7px;
+      border-radius: 75% 60% 75% 60%;
+      background: rgba(255, 235, 164, 0.72);
+      transform: rotate(-7deg);
+    }
+
+    .bird-wing::after {
+      content: "";
+      position: absolute;
+      right: 4px;
+      top: 9px;
+      width: 6px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.5);
+      transform: rotate(-8deg);
+    }
+
+    .bird-eye {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      right: 16px;
+      top: 12px;
+      background: #2c2c2c;
+    }
+
+    .bird-eye::after {
+      content: "";
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      left: 1px;
+      top: 1px;
+      background: #ffffff;
+    }
+
+    .bird-cheek {
+      position: absolute;
+      width: 10px;
+      height: 6px;
+      border-radius: 50%;
+      right: 10px;
+      top: 22px;
+      background: rgba(255, 143, 143, 0.55);
+    }
+
+    .bird-beak {
+      position: absolute;
+      right: -9px;
+      top: 18px;
+      width: 0;
+      height: 0;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-left: 12px solid #ff9f43;
+    }
+
+    .bird.is-rising .bird-wing {
+      animation-duration: 0.115s;
+    }
+
+    .bird.is-falling .bird-wing {
+      animation-duration: 0.24s;
+    }
+
+    @keyframes flap {
+      0% {
+        transform: rotate(-34deg) translateY(-0.5px) scaleY(0.97);
+      }
+      45% {
+        transform: rotate(8deg) translateY(0.8px) scaleY(1);
+      }
+      100% {
+        transform: rotate(-34deg) translateY(-0.5px) scaleY(0.97);
+      }
+    }
+
+    .score-ui {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      min-width: 92px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 2px solid rgba(255, 255, 255, 0.85);
+      background: rgba(14, 49, 79, 0.52);
+      color: #ffffff;
+      font: 700 clamp(22px, 4.2vw, 34px)/1 "Trebuchet MS", sans-serif;
+      text-align: center;
+      text-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+      pointer-events: none;
+      letter-spacing: 0.02em;
+    }
+
+    .top-controls {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 6;
+    }
+
+    .pause-button {
+      appearance: none;
+      min-width: 44px;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: 700 18px/1 "Trebuchet MS", sans-serif;
+      color: #ffffff;
+      background: rgba(13, 44, 70, 0.68);
+      border: 2px solid rgba(255, 255, 255, 0.85);
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.1s ease;
+    }
+
+    .pause-button:hover {
+      filter: brightness(1.07);
+      transform: translateY(-1px);
+    }
+
+    .pause-button:active {
+      transform: translateY(1px);
+    }
+
+    .game-over,
+    .pause-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(8, 30, 50, 0.28);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+    }
+
+    .game-over.show,
+    .pause-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .game-over-panel {
+      min-width: min(84vw, 320px);
+      padding: 26px 24px 22px;
+      border-radius: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      background: rgba(13, 44, 70, 0.74);
+      text-align: center;
+      color: #ffffff;
+      box-shadow: 0 10px 28px rgba(5, 22, 38, 0.25);
+    }
+
+    .game-over-title {
+      margin: 0 0 16px;
+      font: 700 clamp(30px, 6vw, 54px)/1 "Trebuchet MS", sans-serif;
+      text-shadow: 0 3px 0 rgba(0, 0, 0, 0.22);
+    }
+
+    .panel-stats {
+      margin: 0 auto 16px;
+      max-width: 260px;
+      width: 100%;
+    }
+
+    .panel-stat {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0;
+      padding: 8px 2px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+      font: 700 18px/1 "Trebuchet MS", sans-serif;
+    }
+
+    .panel-stat:last-child {
+      border-bottom: none;
+    }
+
+    .panel-stat strong {
+      font-size: 24px;
+      letter-spacing: 0.02em;
+    }
+
+    .panel-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .restart-button {
+      appearance: none;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 24px;
+      min-width: 120px;
+      font: 700 20px/1 "Trebuchet MS", sans-serif;
+      color: #17401f;
+      background: #ffd85d;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #d2aa2f;
+      transition: transform 0.1s ease, filter 0.1s ease;
+    }
+
+    .secondary-button {
+      appearance: none;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 24px;
+      min-width: 120px;
+      font: 700 20px/1 "Trebuchet MS", sans-serif;
+      color: #ffffff;
+      background: #3e6687;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #274861;
+      transition: transform 0.1s ease, filter 0.1s ease;
+    }
+
+    .restart-button:hover {
+      filter: brightness(1.04);
+      transform: translateY(-1px);
+    }
+
+    .secondary-button:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    .restart-button:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #d2aa2f;
+    }
+
+    .secondary-button:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #274861;
+    }
+
+    .fx-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .firework-dot {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      transform: translate(-50%, -50%);
+      animation: pop 900ms ease-out forwards;
+      will-change: transform, opacity;
+    }
+
+    @keyframes pop {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.34);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="game-screen" aria-label="game-screen">
+    <div class="sky-base"></div>
+    <div class="sky-segment" id="skyA"></div>
+    <div class="sky-segment" id="skyB"></div>
+    <div class="cloud-layer" id="cloudLayer"></div>
+    <div class="obstacle-layer" id="obstacleLayer"></div>
+    <div class="ground-strip" aria-hidden="true"></div>
+    <div class="bird" id="bird" aria-label="bird">
+      <div class="bird-body">
+        <div class="bird-wing"></div>
+        <div class="bird-eye"></div>
+        <div class="bird-cheek"></div>
+        <div class="bird-beak"></div>
+      </div>
+    </div>
+    <div class="score-ui" id="scoreText">0</div>
+    <div class="top-controls">
+      <button class="pause-button" id="pauseButton" type="button" aria-label="pause">II</button>
+    </div>
+    <div class="fx-layer" id="fxLayer" aria-hidden="true"></div>
+    <div class="game-over" id="gameOverScreen">
+      <div class="game-over-panel">
+        <p class="game-over-title">Game Over</p>
+        <div class="panel-stats">
+          <p class="panel-stat"><span>현재 점수</span><strong id="gameOverScoreText">0</strong></p>
+          <p class="panel-stat"><span>최고 점수</span><strong id="gameOverBestText">0</strong></p>
+        </div>
+        <div class="panel-actions">
+          <button class="restart-button" id="restartButton" type="button">Restart</button>
+        </div>
+      </div>
+    </div>
+    <div class="pause-overlay" id="pauseScreen">
+      <div class="game-over-panel">
+        <p class="game-over-title">Paused</p>
+        <div class="panel-stats">
+          <p class="panel-stat"><span>현재 점수</span><strong id="pauseScoreText">0</strong></p>
+          <p class="panel-stat"><span>최고 점수</span><strong id="pauseBestText">0</strong></p>
+        </div>
+        <div class="panel-actions">
+          <button class="restart-button" id="resumeButton" type="button">재생</button>
+          <button class="secondary-button" id="pauseRestartButton" type="button">처음부터</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const gameScreen = document.querySelector(".game-screen");
+    const skyA = document.getElementById("skyA");
+    const skyB = document.getElementById("skyB");
+    const cloudLayer = document.getElementById("cloudLayer");
+    const obstacleLayer = document.getElementById("obstacleLayer");
+    const bird = document.getElementById("bird");
+    const scoreText = document.getElementById("scoreText");
+    const pauseButton = document.getElementById("pauseButton");
+    const fxLayer = document.getElementById("fxLayer");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    const gameOverScoreText = document.getElementById("gameOverScoreText");
+    const gameOverBestText = document.getElementById("gameOverBestText");
+    const restartButton = document.getElementById("restartButton");
+    const pauseScreen = document.getElementById("pauseScreen");
+    const pauseScoreText = document.getElementById("pauseScoreText");
+    const pauseBestText = document.getElementById("pauseBestText");
+    const resumeButton = document.getElementById("resumeButton");
+    const pauseRestartButton = document.getElementById("pauseRestartButton");
+
+    const BEST_SCORE_KEY = "sky_bird_best_score";
+    const BASE_SCENE_WIDTH = 1260;
+    const BASE_SCENE_HEIGHT = 540;
+    const SKY_SPEED = 65;
+    const CLOUD_COUNT = 9;
+    const OBSTACLE_SPEED = 225;
+    const OBSTACLE_WIDTH = 86;
+    const OBSTACLE_GAP = 178;
+    const OBSTACLE_SPAWN_SEC = 1.52;
+    const OBSTACLE_MIN_MARGIN = 58;
+    const GROUND_HEIGHT = 14;
+    const PIPE_TOP_OVERFLOW = 42;
+    const GRAVITY = 1650;
+    const FLAP_IMPULSE = -520;
+    const MAX_FALL_SPEED = 660;
+    const BIRD_HIT_INSET_X = 14;
+    const BIRD_HIT_INSET_Y = 10;
+    const FIREWORK_COLORS = ["#ffd95d", "#ff8f64", "#71d9ff", "#c8ff6b", "#ff9be4"];
+
+    let sceneWidth = 0;
+    let sceneHeight = 0;
+    let skyX1 = 0;
+    let skyX2 = 0;
+    let last = performance.now();
+    let birdY = 0;
+    let birdVY = 0;
+    let spawnTimer = 0;
+    let score = 0;
+    let bestScore = 0;
+    let isGameOver = false;
+    let isPaused = false;
+
+    const clouds = [];
+    let obstacles = [];
+    const fireworkTimers = [];
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function readBestScore() {
+      try {
+        const raw = Number(localStorage.getItem(BEST_SCORE_KEY) || 0);
+        return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
+      } catch {
+        return 0;
+      }
+    }
+
+    function writeBestScore(value) {
+      try {
+        localStorage.setItem(BEST_SCORE_KEY, String(value));
+      } catch {
+        // Ignore storage errors in private mode.
+      }
+    }
+
+    function fitGameToViewport() {
+      const maxWidth = window.innerWidth * 0.98;
+      const maxHeight = window.innerHeight * 0.92;
+      const scale = Math.min(maxWidth / BASE_SCENE_WIDTH, maxHeight / BASE_SCENE_HEIGHT);
+      gameScreen.style.transform = `scale(${Math.max(scale, 0.2)})`;
+    }
+
+    function layoutScene() {
+      sceneWidth = gameScreen.clientWidth;
+      sceneHeight = gameScreen.clientHeight;
+      skyX1 = 0;
+      skyX2 = sceneWidth;
+      skyA.style.transform = `translateX(${skyX1}px)`;
+      skyB.style.transform = `translateX(${skyX2}px)`;
+      if (birdY === 0) birdY = sceneHeight * 0.4;
+      birdY = Math.min(Math.max(birdY, 10), getBottomLimit());
+      placeBird();
+    }
+
+    function syncPanels() {
+      gameOverScoreText.textContent = String(score);
+      gameOverBestText.textContent = String(bestScore);
+      pauseScoreText.textContent = String(score);
+      pauseBestText.textContent = String(bestScore);
+    }
+
+    function setScore(value) {
+      score = value;
+      scoreText.textContent = String(score);
+      syncPanels();
+    }
+
+    function setBestScore(value) {
+      bestScore = value;
+      writeBestScore(bestScore);
+      syncPanels();
+    }
+
+    function createCloud() {
+      const el = document.createElement("div");
+      el.className = "cloud";
+      cloudLayer.appendChild(el);
+
+      const scale = rand(0.65, 1.35);
+      const cloud = {
+        el,
+        x: rand(0, sceneWidth * 1.3),
+        y: rand(sceneHeight * 0.12, sceneHeight * 0.62),
+        speed: rand(40, 105),
+        scale,
+        opacity: rand(0.5, 0.9),
+        phase: rand(0, Math.PI * 2)
+      };
+
+      el.style.opacity = String(cloud.opacity);
+      clouds.push(cloud);
+    }
+
+    function resetCloud(cloud, fromRight = true) {
+      cloud.x = fromRight ? sceneWidth + rand(30, sceneWidth * 0.6) : rand(0, sceneWidth);
+      cloud.y = rand(sceneHeight * 0.12, sceneHeight * 0.62);
+      cloud.speed = rand(40, 105);
+      cloud.phase = rand(0, Math.PI * 2);
+    }
+
+    function placeCloud(cloud, timeSec) {
+      const bob = Math.sin(timeSec * 1.7 + cloud.phase) * 2.5;
+      cloud.el.style.transform = `translate(${cloud.x}px, ${cloud.y + bob}px) scale(${cloud.scale})`;
+    }
+
+    function updateObstacleShape(obstacle) {
+      const gapTop = obstacle.gapY - obstacle.gapSize / 2;
+      const gapBottom = obstacle.gapY + obstacle.gapSize / 2;
+      obstacle.topHeight = Math.max(0, gapTop);
+      obstacle.bottomY = gapBottom;
+      obstacle.bottomHeight = Math.max(0, sceneHeight - gapBottom);
+      obstacle.topEl.style.top = `${-PIPE_TOP_OVERFLOW}px`;
+      obstacle.topEl.style.height = `${obstacle.topHeight + PIPE_TOP_OVERFLOW}px`;
+      obstacle.bottomEl.style.height = `${obstacle.bottomHeight}px`;
+    }
+
+    function placeObstacle(obstacle) {
+      obstacle.el.style.transform = `translateX(${obstacle.x}px)`;
+    }
+
+    function createObstaclePair(spawnNearEdge = false) {
+      const obstacleEl = document.createElement("div");
+      obstacleEl.className = "obstacle-pair";
+      obstacleEl.style.width = `${OBSTACLE_WIDTH}px`;
+
+      const topEl = document.createElement("div");
+      topEl.className = "pipe pipe-top";
+      const bottomEl = document.createElement("div");
+      bottomEl.className = "pipe pipe-bottom";
+      obstacleEl.append(topEl, bottomEl);
+      obstacleLayer.appendChild(obstacleEl);
+
+      const playableBottom = sceneHeight - GROUND_HEIGHT;
+      const safeMargin = Math.min(OBSTACLE_MIN_MARGIN, playableBottom * 0.18);
+      const maxGapByHeight = playableBottom - safeMargin * 2 - 12;
+      const gapSize = Math.min(OBSTACLE_GAP, Math.max(72, maxGapByHeight));
+      const minCenter = safeMargin + gapSize / 2;
+      const maxCenter = playableBottom - safeMargin - gapSize / 2;
+      const gapY = maxCenter > minCenter ? rand(minCenter, maxCenter) : playableBottom / 2;
+
+      const obstacle = {
+        el: obstacleEl,
+        topEl,
+        bottomEl,
+        x: spawnNearEdge ? sceneWidth - OBSTACLE_WIDTH * 0.35 : sceneWidth + OBSTACLE_WIDTH + 30,
+        width: OBSTACLE_WIDTH,
+        gapY,
+        gapSize,
+        topHeight: 0,
+        bottomY: 0,
+        bottomHeight: 0,
+        scored: false
+      };
+
+      updateObstacleShape(obstacle);
+      placeObstacle(obstacle);
+      obstacles.push(obstacle);
+    }
+
+    function clearObstacles() {
+      for (const obstacle of obstacles) {
+        obstacle.el.remove();
+      }
+      obstacles = [];
+      spawnTimer = 0;
+    }
+
+    function updateObstacles(dt) {
+      spawnTimer += dt;
+      while (spawnTimer >= OBSTACLE_SPAWN_SEC) {
+        spawnTimer -= OBSTACLE_SPAWN_SEC;
+        createObstaclePair();
+      }
+
+      const nextObstacles = [];
+      for (const obstacle of obstacles) {
+        obstacle.x -= OBSTACLE_SPEED * dt;
+        placeObstacle(obstacle);
+        if (obstacle.x + obstacle.width >= -24) {
+          nextObstacles.push(obstacle);
+        } else {
+          obstacle.el.remove();
+        }
+      }
+      obstacles = nextObstacles;
+    }
+
+    function flap() {
+      birdVY = FLAP_IMPULSE;
+    }
+
+    function getBottomLimit() {
+      return Math.max(10, sceneHeight - GROUND_HEIGHT - bird.offsetHeight + 8);
+    }
+
+    function placeBird() {
+      const lift = Math.max(Math.min(-birdVY / 500, 1), 0);
+      const fall = Math.max(Math.min(birdVY / 650, 1), 0);
+      const angle = -16 * lift + 24 * fall;
+      bird.style.transform = `translateY(${birdY}px) rotate(${angle}deg)`;
+      bird.classList.toggle("is-rising", birdVY < -30);
+      bird.classList.toggle("is-falling", birdVY > 110);
+    }
+
+    function updateScoreByPassing() {
+      const birdBackX = bird.offsetLeft + BIRD_HIT_INSET_X;
+      let gained = 0;
+      for (const obstacle of obstacles) {
+        if (!obstacle.scored && birdBackX > obstacle.x + obstacle.width) {
+          obstacle.scored = true;
+          gained += 1;
+        }
+      }
+      if (gained > 0) setScore(score + gained);
+    }
+
+    function rectsIntersect(a, b) {
+      return (
+        a.x < b.x + b.w &&
+        a.x + a.w > b.x &&
+        a.y < b.y + b.h &&
+        a.y + a.h > b.y
+      );
+    }
+
+    function checkObstacleCollision() {
+      const birdRect = {
+        x: bird.offsetLeft + BIRD_HIT_INSET_X,
+        y: birdY + BIRD_HIT_INSET_Y,
+        w: bird.offsetWidth - BIRD_HIT_INSET_X * 2,
+        h: bird.offsetHeight - BIRD_HIT_INSET_Y * 2
+      };
+
+      for (const obstacle of obstacles) {
+        const topRect = { x: obstacle.x, y: 0, w: obstacle.width, h: obstacle.topHeight };
+        const bottomRect = {
+          x: obstacle.x,
+          y: obstacle.bottomY,
+          w: obstacle.width,
+          h: obstacle.bottomHeight
+        };
+        if (rectsIntersect(birdRect, topRect) || rectsIntersect(birdRect, bottomRect)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function spawnFireworkBurst(x, y, count) {
+      for (let i = 0; i < count; i += 1) {
+        const dot = document.createElement("span");
+        dot.className = "firework-dot";
+        const angle = (Math.PI * 2 * i) / count + rand(-0.12, 0.12);
+        const distance = rand(52, 132);
+        dot.style.left = `${x}px`;
+        dot.style.top = `${y}px`;
+        dot.style.background = FIREWORK_COLORS[Math.floor(rand(0, FIREWORK_COLORS.length))];
+        dot.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+        dot.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+        dot.style.animationDuration = `${Math.floor(rand(720, 1080))}ms`;
+        fxLayer.appendChild(dot);
+        dot.addEventListener("animationend", () => dot.remove(), { once: true });
+      }
+    }
+
+    function clearFireworks() {
+      while (fireworkTimers.length > 0) {
+        clearTimeout(fireworkTimers.pop());
+      }
+      fxLayer.textContent = "";
+    }
+
+    function playNewRecordEffect() {
+      clearFireworks();
+      for (let i = 0; i < 6; i += 1) {
+        const timer = setTimeout(() => {
+          const x = rand(sceneWidth * 0.16, sceneWidth * 0.84);
+          const y = rand(sceneHeight * 0.14, sceneHeight * 0.56);
+          spawnFireworkBurst(x, y, Math.floor(rand(16, 24)));
+        }, i * 120);
+        fireworkTimers.push(timer);
+      }
+    }
+
+    function updatePauseButtonState() {
+      pauseButton.disabled = isGameOver;
+      pauseButton.style.opacity = isGameOver ? "0.55" : "1";
+      pauseButton.style.cursor = isGameOver ? "default" : "pointer";
+    }
+
+    function showPauseScreen() {
+      syncPanels();
+      pauseScreen.classList.add("show");
+    }
+
+    function hidePauseScreen() {
+      pauseScreen.classList.remove("show");
+    }
+
+    function pauseGame() {
+      if (isGameOver || isPaused) return;
+      isPaused = true;
+      showPauseScreen();
+    }
+
+    function resumeGame() {
+      if (isGameOver || !isPaused) return;
+      isPaused = false;
+      hidePauseScreen();
+      last = performance.now();
+      requestAnimationFrame(update);
+    }
+
+    function triggerGameOver() {
+      if (isGameOver) return;
+      isGameOver = true;
+      isPaused = false;
+      hidePauseScreen();
+
+      if (score > bestScore) {
+        setBestScore(score);
+        playNewRecordEffect();
+      } else {
+        clearFireworks();
+        syncPanels();
+      }
+
+      gameOverScreen.classList.add("show");
+      updatePauseButtonState();
+    }
+
+    function resetBird() {
+      birdY = sceneHeight * 0.4;
+      birdVY = 0;
+      placeBird();
+    }
+
+    function restartGame(force = false) {
+      if (!force && !isGameOver && !isPaused) return;
+      clearObstacles();
+      clearFireworks();
+      setScore(0);
+      isGameOver = false;
+      isPaused = false;
+      gameOverScreen.classList.remove("show");
+      hidePauseScreen();
+      updatePauseButtonState();
+      resetBird();
+      createObstaclePair(true);
+      last = performance.now();
+      requestAnimationFrame(update);
+    }
+
+    function update(now) {
+      if (isGameOver || isPaused) return;
+
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      const timeSec = now / 1000;
+
+      skyX1 -= SKY_SPEED * dt;
+      skyX2 -= SKY_SPEED * dt;
+      if (skyX1 <= -sceneWidth) skyX1 = skyX2 + sceneWidth;
+      if (skyX2 <= -sceneWidth) skyX2 = skyX1 + sceneWidth;
+
+      skyA.style.transform = `translateX(${skyX1}px)`;
+      skyB.style.transform = `translateX(${skyX2}px)`;
+
+      for (const cloud of clouds) {
+        cloud.x -= cloud.speed * dt;
+        if (cloud.x < -220) resetCloud(cloud, true);
+        placeCloud(cloud, timeSec);
+      }
+
+      updateObstacles(dt);
+
+      birdVY += GRAVITY * dt;
+      if (birdVY > MAX_FALL_SPEED) birdVY = MAX_FALL_SPEED;
+      birdY += birdVY * dt;
+
+      const topLimit = 10;
+      const bottomLimit = getBottomLimit();
+      if (birdY < topLimit) {
+        birdY = topLimit;
+        if (birdVY < 0) birdVY = 0;
+      }
+      if (birdY > bottomLimit) {
+        birdY = bottomLimit;
+        birdVY = 0;
+        placeBird();
+        triggerGameOver();
+        return;
+      }
+
+      placeBird();
+      if (checkObstacleCollision()) {
+        triggerGameOver();
+        return;
+      }
+      updateScoreByPassing();
+
+      requestAnimationFrame(update);
+    }
+
+    bestScore = readBestScore();
+    layoutScene();
+    fitGameToViewport();
+    setScore(0);
+    syncPanels();
+    updatePauseButtonState();
+    for (let i = 0; i < CLOUD_COUNT; i += 1) createCloud();
+    for (const cloud of clouds) placeCloud(cloud, 0);
+    createObstaclePair(true);
+
+    window.addEventListener("resize", fitGameToViewport);
+
+    function canFlapByInputTarget(target) {
+      if (isGameOver || isPaused) return false;
+      if (target instanceof Element && target.closest("button")) return false;
+      return true;
+    }
+
+    window.addEventListener("keydown", (event) => {
+      if (event.code === "Space") {
+        event.preventDefault();
+        if (!isGameOver && !isPaused) flap();
+      }
+    });
+
+    window.addEventListener("mousedown", (event) => {
+      if (event.button !== 0 && event.button !== 2) return;
+      if (!canFlapByInputTarget(event.target)) return;
+      event.preventDefault();
+      flap();
+    });
+
+    window.addEventListener("contextmenu", (event) => {
+      if (!canFlapByInputTarget(event.target)) return;
+      event.preventDefault();
+    });
+
+    pauseButton.addEventListener("click", pauseGame);
+    resumeButton.addEventListener("click", resumeGame);
+    pauseRestartButton.addEventListener("click", () => restartGame(true));
+    restartButton.addEventListener("click", () => restartGame(true));
+
+    requestAnimationFrame(update);
+  </script>
+</body>
+</html>
